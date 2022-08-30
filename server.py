@@ -7,7 +7,7 @@ from sqlalchemy import Column, DateTime, Integer, String, func
 from sqlalchemy.exc import IntegrityError
 
 
-# router = web.RouteTableDef()
+router = web.RouteTableDef()
 app = web.Application()
 
 
@@ -40,10 +40,10 @@ class Advert(Base):
     __tablename__ = "Advert"
 
     id = Column(Integer, primary_key=True)
-    header = Column(String(64), index=True, unique=True, nullable=False)
-    description = Column(String(128))
+    header = Column(String(100), index=True, unique=True, nullable=False)
+    description = Column(String(255))
     create_date = Column(DateTime, server_default=func.now())
-    owner = Column(String(128))
+    owner = Column(String(100))
 
 
 async def get_advert(advert_id: int, session) -> Advert:
@@ -52,29 +52,31 @@ async def get_advert(advert_id: int, session) -> Advert:
         raise NotFound(message="advert not found")
     return advert
 
-#
-# class AdvertView(web.View):
-#     async def get(self):
-#         user_id = int(self.request.match_info["user_id"])
-#         async with app.async_session_maker() as session:
-#             user = await get_user(user_id, session)
-#             return web.json_response(
-#                 {
-#                     "username": user.username,
-#                     "registration_time": int(user.registration_time.timestamp()),
-#                 }
-#             )
-#
-#     async def post(self):
-#         user_data = await self.request.json()
-#         new_user = User(**user_data)
-#         async with app.async_session_maker() as session:
-#             try:
-#                 session.add(new_user)
-#                 await session.commit()
-#                 return web.json_response({"id": new_user.id})
-#             except IntegrityError as er:
-#                 raise BadRequest(message="user already exists")
+
+class AdvertView(web.View):
+    async def get(self):
+        advert_id = int(self.request.match_info["advert_id"])
+        async with app.async_session_maker() as session:
+            advert = await get_advert(advert_id, session)
+            return web.json_response(
+                {
+                    "id": advert.id,
+                    "header": advert.header,
+                    "description": advert.description,
+                    "create_date": int(advert.create_date.timestamp()),
+                    "owner": advert.owner
+                })
+
+    async def post(self):
+        advert_data = await self.request.json()
+        new_advert = Advert(**advert_data)
+        async with app.async_session_maker() as session:
+            try:
+                session.add(new_advert)
+                await session.commit()
+                return web.json_response({"id": new_advert.id})
+            except IntegrityError as er:
+                raise BadRequest(message="advert already exists")
 #
 #     async def patch(self):
 #         user_id = int(self.request.match_info["user_id"])
@@ -96,21 +98,21 @@ async def get_advert(advert_id: int, session) -> Advert:
 #             return web.json_response({"status": "success"})
 #
 #
-# async def init_orm(app: web.Application):
-#     print("Приложение стартовало")
-#     async with engine.begin() as conn:
-#         await conn.run_sync(Base.metadata.create_all)
-#         async_session_maker = sessionmaker(
-#             engine, expire_on_commit=False, class_=AsyncSession
-#         )
-#         app.async_session_maker = async_session_maker
-#         yield
-#     print("Приложение завершило работу")
-#
-#
-# app.cleanup_ctx.append(init_orm)
-# app.add_routes([web.get("/users/{user_id:\d+}", UserView)])
-# app.add_routes([web.patch("/users/{user_id:\d+}", UserView)])
-# app.add_routes([web.delete("/users/{user_id:\d+}", UserView)])
-# app.add_routes([web.post("/users/", UserView)])
-# web.run_app(app)
+async def init_orm(app: web.Application):
+    print("Приложение стартовало")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        async_session_maker = sessionmaker(
+            engine, expire_on_commit=False, class_=AsyncSession
+        )
+        app.async_session_maker = async_session_maker
+        yield
+    print("Приложение завершило работу")
+
+app.cleanup_ctx.append(init_orm)
+app.add_routes([web.get("/adverts/{advert_id:\d+}", AdvertView)])
+app.add_routes([web.post("/adverts/", AdvertView)])
+# app.add_routes([web.patch("/users/{user_id:\d+}", AdvertView)])
+# # app.add_routes([web.delete("/users/{user_id:\d+}", AdvertView)])
+
+web.run_app(app)
