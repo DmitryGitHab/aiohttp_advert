@@ -7,7 +7,7 @@ from sqlalchemy import Column, DateTime, Integer, String, func
 from sqlalchemy.exc import IntegrityError
 
 
-router = web.RouteTableDef()
+# router = web.RouteTableDef()
 app = web.Application()
 
 
@@ -77,27 +77,27 @@ class AdvertView(web.View):
                 return web.json_response({"id": new_advert.id})
             except IntegrityError as er:
                 raise BadRequest(message="advert already exists")
-#
-#     async def patch(self):
-#         user_id = int(self.request.match_info["user_id"])
-#         user_data = await self.request.json()
-#         async with app.async_session_maker() as session:
-#             user = await get_user(user_id, session)
-#             for column, value in user_data.items():
-#                 setattr(user, column, value)
-#             session.add(user)
-#             await session.commit()
-#             return web.json_response({"status": "success"})
-#
-#     async def delete(self):
-#         user_id = int(self.request.match_info["user_id"])
-#         async with app.async_session_maker() as session:
-#             user = await get_user(user_id, session)
-#             await session.delete(user)
-#             await session.commit()
-#             return web.json_response({"status": "success"})
-#
-#
+
+    async def patch(self):
+        advert_id = int(self.request.match_info["advert_id"])
+        advert_data = await self.request.json()
+        async with app.async_session_maker() as session:
+            advert = await get_advert(advert_id, session)
+            for column, value in advert_data.items():
+                setattr(advert, column, value)
+            session.add(advert)
+            await session.commit()
+            return web.json_response({"status": "success"})
+
+    async def delete(self):
+        advert_id = int(self.request.match_info["advert_id"])
+        async with app.async_session_maker() as session:
+            advert = await get_advert(advert_id, session)
+            await session.delete(advert)
+            await session.commit()
+            return web.json_response({"status": "success"})
+
+
 async def init_orm(app: web.Application):
     print("Приложение стартовало")
     async with engine.begin() as conn:
@@ -112,7 +112,7 @@ async def init_orm(app: web.Application):
 app.cleanup_ctx.append(init_orm)
 app.add_routes([web.get("/adverts/{advert_id:\d+}", AdvertView)])
 app.add_routes([web.post("/adverts/", AdvertView)])
-# app.add_routes([web.patch("/users/{user_id:\d+}", AdvertView)])
-# # app.add_routes([web.delete("/users/{user_id:\d+}", AdvertView)])
+app.add_routes([web.patch("/adverts/{advert_id:\d+}", AdvertView)])
+app.add_routes([web.delete("/adverts/{advert_id:\d+}", AdvertView)])
 
 web.run_app(app)
